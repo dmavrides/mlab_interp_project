@@ -1,3 +1,4 @@
+#%%
 # -*- coding: utf-8 -*-
 """EasyTransformer_demo (v2).ipynb
 
@@ -14,6 +15,7 @@ Original file is located at
 !pip install pyyaml==5.4.1
 !pip install transformers
 !pip install git+https://github.com/neelnanda-io/Easy-Transformer.git
+#%%
 
 # Commented out IPython magic to ensure Python compatibility.
 # Import stuff
@@ -28,7 +30,7 @@ import tqdm.notebook as tqdm
 import random
 import time
 
-from google.colab import drive
+# from google.colab import drive
 from pathlib import Path
 import pickle
 import os
@@ -57,7 +59,7 @@ from easy_transformer.utils import gelu_new, to_numpy, get_corner #helper functi
 from easy_transformer.hook_points import HookedRootModule, HookPoint
 from easy_transformer.EasyTransformer import EasyTransformer,TransformerBlock, MLP, Attention, LayerNormPre, PosEmbed, Unembed, Embed
 from easy_transformer.experiments import ExperimentMetric, AblationConfig, EasyAblation, EasyPatching, PatchingConfig
-
+#%%
 """#Hook Points
 
 A Garcon-style interface - the key thing is a HookPoint class. This is a layer to wrap any activation within the model in. The HookPoint acts as an identity function, but allows us to put PyTorch hooks in to edit and access the relevant activation. This allows us to take any model and insert in access points to all interesting activations by wrapping them in HookPoints
@@ -133,6 +135,8 @@ def set_to_zero_hook(tensor, hook):
 print('Output after intervening on layer2.hook_scaled', 
       model.run_with_hooks(torch.tensor(5.),
                            fwd_hooks = [('layer2.hook_square', set_to_zero_hook)]).item())
+                           
+#%%
 
 """# Transformer models
 
@@ -162,7 +166,6 @@ The list of supported model names:
                      'EleutherAI/gpt-neox-20b']
                      ```
 """
-
 
 
 """#Examples
@@ -202,6 +205,7 @@ print('Reference: Hyperparameters for the model')
 for hyper_param in (model.cfg):
     print(hyper_param, model.cfg[hyper_param])
 
+#%%
 """##Using the model
 
 The model can be given either text or tokens as an input (text is automatically converted to a `batch_size=1` batch of tokens)
@@ -227,6 +231,7 @@ print(torch.isclose(original_model_log_probs, easy_log_probs).sum()/easy_log_pro
 print('Fraction of logits the same between easy model and original model:')
 print(torch.isclose(original_model_logits, easy_logits).sum()/easy_logits.numel())
 
+#%%
 """##Basic Examples
 
 Print the shapes of all activations
@@ -287,7 +292,7 @@ model.reset_hooks()
 model.cache_all(cache, device='cuda')
 print('Run time when just caching on GPU')
 # %timeit logits = model(random_tokens)
-
+#%%
 """##Editing Activations
 **To change an activation, add a hook to that HookPoint which returns the new activation**
 
@@ -335,7 +340,7 @@ print('New logits')
 print(get_corner(logits, 3))
 print('Original logits')
 print(get_corner(original_logits, 3))
-
+#%%
 """Freezing attention patterns - here we do two runs of the model. First on the original text, caching attn patterns, and secondly on the new text, loading the cached patterns
 
 """
@@ -350,7 +355,7 @@ def freeze_attn(attn, hook):
 logits = model.run_with_hooks(tokens, fwd_hooks=[(filter_hook_attn, cache_attn)])
 
 logits_2 = model.run_with_hooks(tokens_2, fwd_hooks=[(filter_hook_attn, freeze_attn)])
-
+#%%
 """##Using Hook Contexts
 
 **Each hook point has a dictionary `hook.ctx` that can be used to store information between runs** - this is useful for keeping running totals, etc
@@ -373,7 +378,7 @@ def running_total_hook(neuron_acts, hook):
 for animal_text in animal_texts:
     show_tokens(animal_text)
     model.run_with_hooks(animal_text, fwd_hooks=[(f'blocks.{layer}.mlp.hook_post', running_total_hook)])
-
+#%%
 """Finding the dataset example that most activates a given neuron
 
 """
@@ -399,7 +404,7 @@ for animal_text in animal_texts:
 print()
 print('Maximally activating dataset example:', model.hook_dict[f'blocks.{layer}.mlp.hook_post'].ctx['text'])
 model.reset_hooks(clear_contexts=True)
-
+#%%
 """##Fancier Examples
 
 Looking for heads that mostly attend to the previous token
@@ -425,7 +430,7 @@ px.imshow(prev_token_scores,
           y=[f'Layer {i}' for i in range(model.cfg['n_layers'])], 
           title='Prev Token Scores', 
           color_continuous_scale='Blues')
-
+#%%
 """[ROME style](https://rome.baulab.info/) patching for causal tracing - we have two runs with two different prompts and different answers, eg "Steve Jobs founded" -> " Apple" and "Bill Gates founded" -> " Microsoft". We patch parts of the layer outputs or residual stream from specific tokens and positions and see which patches significantly shift the answer from " Apple" to " Microsoft"
 """
 
@@ -465,7 +470,7 @@ corrupted_logits = model.run_with_hooks(prompt_2,
 corrupted_log_probs = F.log_softmax(corrupted_logits, dim=-1)
 print('Corrupted (Residual) log prob for', response_1, corrupted_log_probs[0, -1, logit_index_1].item())
 print('Corrupted (Residual) log prob for', response_2, corrupted_log_probs[0, -1, logit_index_2].item())
-
+#%%
 """We can also patch the outputs of MLP layers 0 to 7 on the Gates/Jobs token - this time, rather than giving a hook name, we give a Boolean function that filters for the names of those hooks."""
 
 layer_start = 0
@@ -486,7 +491,7 @@ corrupted_logits = model.run_with_hooks(prompt_2,
 corrupted_log_probs = F.log_softmax(corrupted_logits, dim=-1)
 print('Corrupted (MLP) log prob for', response_1, corrupted_log_probs[0, -1, logit_index_1].item())
 print('Corrupted (MLP) log prob for', response_2, corrupted_log_probs[0, -1, logit_index_2].item())
-
+#%%
 """Looking for [induction heads](https://transformer-circuits.pub/2022/in-context-learning-and-induction-heads/index.html), by feeding in a random sequence of tokens repeated twice and looking for heads that attend from a second copy of a token to the token just after the first copy."""
 
 seq_len = 100
@@ -509,7 +514,7 @@ def filter_attn_hooks(hook_name):
 
 induction_logits = model.run_with_hooks(rand_tokens_repeat, fwd_hooks=[(filter_attn_hooks, calc_induction_score)])
 px.imshow(induction_scores_array, labels={'y':'Layer', 'x':'Head'}, color_continuous_scale='Blues')
-
+#%%
 """**Validation:** We can ablate the top few heads by this metric, and show that performance goes down substantially"""
 
 induction_logits = model(rand_tokens_repeat)
@@ -535,7 +540,7 @@ ablated_pred_log_probs = torch.gather(ablated_log_probs[:, :-1], -1, rand_tokens
 print('Loss on repeated sequence without induction heads:', ablated_pred_log_probs[:, seq_len:].mean())
 
 px.imshow(attn_head_mask, labels={'y':'Layer', 'x':'Head'}, color_continuous_scale='Blues', title='Mask').show()
-
+#%%
 """## Ablation experiments
 
 We provide a wrapper to facilitate ablations experiment. 
@@ -567,7 +572,7 @@ abl = EasyAblation(model, config, metric)
 result = abl.run_ablation()
 
 px.imshow(result, labels={'y':'Layer', 'x':'Head'}, color_continuous_scale='Blues', title='Induction Score Variation after Ablation').show()
-
+#%%
 """You can also use the `EasyAblation` object to generate ablations hook, without using it to run ablations. This is useful when you want to ablate several heads at once. The ablations hooks generated will respect the configuration you used to generate the `EasyAblation` object.
 
 Here we can reproduce the revious results where we ablate the induction heads by replacing their activation by zero. You can notice that the combined effect of the ablations of the 5 heads is much greater than the sum of their individual effect.
@@ -578,7 +583,7 @@ for (l,h) in [(5,1), (5,5), (6,9), (7,2), (7,10)]:
     hook_name, hook = abl.get_hook(l,h)
     model.add_hook(hook_name, hook)
 print(f"Loss on the repeated random token after zero-ablations of the induction heads {induction_loss(model, rand_tokens_repeat)}")
-
+#%%
 """However, replacing the activation by zero is quite a weird thing to do as this could be really far from the baseline activation depending on the head. To fix this, we can instead replace the activation by its mean on the dataset. All the effect related to a particular sample will be washed out but the global contribution will be kept. The drop is still significant but not as much as zero ablation."""
 
 mean_abl_config = AblationConfig(abl_type="mean", target_module="attn_head",head_circuit="z", cache_means=True)
@@ -589,7 +594,7 @@ for (l,h) in [(5,1), (5,5), (6,9), (7,2), (7,10)]:
     model.add_hook(hook_name, hook)
     
 print(f"Loss on the repeated random token after mean-ablations of the induction heads {induction_loss(model, rand_tokens_repeat)}")
-
+#%%
 """### Custom ablation function
 
 When using `abl_type="custom"` you can specify an arbitrary function `custom_abl_fn`. It has to take as input the normal output of the module, its mean activation, the hook object and output a tensor of the same shape as the normal output.
@@ -611,7 +616,7 @@ result = abl.run_ablation()
 fig = px.imshow(result, labels={'y':'Layer', 'x':'Head'}, color_continuous_scale='Blues', title='Induction Score Variation after Custom Ablation')
 fig.update_xtick()
 fig.show()
-
+#%%
 """## Patching experiments
 
 We can also run patching experiment were we take activation from a source dataset and copy them in the model while processing the target dataset. We can then mesure wich module causes the model to change its output.
@@ -633,11 +638,11 @@ target_logits = model.to_tokens(target_labels).squeeze()
 
 tokens_pos = [2,2] #the position of "founded" in the target sentences, where to get the next token prediction
 
+#logit target - logit source (positive by default) in function
 def fact_transfer_score(model, target_dataset):
     logits = model(target_dataset)
     log_probs = F.log_softmax(logits, dim=-1)
-    logit_diff = log_probs[torch.arange(len(target_logits)),tokens_pos,target_logits] -\ #logit target - logit source (positive by default)
-                 log_probs[torch.arange(len(source_logits)),tokens_pos,source_logits]
+    logit_diff = log_probs[torch.arange(len(target_logits)),tokens_pos,target_logits] - log_probs[torch.arange(len(source_logits)),tokens_pos,source_logits]
 
     return logit_diff.mean() 
 
@@ -648,7 +653,7 @@ result = patching.run_patching()
 px.imshow(result, labels={'y':'Layer', 'x':'Head'}, color_continuous_scale='Blues', title='Absolute Log Logit Prob Difference After Patching').show()
 
 
-
+#%%
 """We can be more precise and patch at only certain token position. For that, we can use custom patching functions. Below we show that patching at the last name position is enough to recover the previous plot."""
 
 def patch_last_name(z, source_act, hook):
@@ -667,7 +672,7 @@ config = PatchingConfig(
 patching = EasyPatching(model, config, metric)
 result = patching.run_patching()
 px.imshow(result, labels={'y':'Layer', 'x':'Head'}, color_continuous_scale='Blues', title='Log Logit Prob difference after Patching').show()
-
+#%%
 """##Loading Checkpointed Models
 Researchers at the Stanford Center for Research on Foundation Models kindly [created and open sourced 5 training runs of GPT-2 Small and GPT-2 Medium](https://huggingface.co/stanford-crfm), with 600 checkpoints taken during training. These can be loaded in via the same interface as above
 
@@ -683,7 +688,7 @@ checkpointed_model = EasyTransformer('stanford-gpt2-small-A', checkpoint=20000)
 from easy_transformer.EasyTransformer import STANFORD_CRFM_CHECKPOINTS
 print("Available checkpoints:")
 (STANFORD_CRFM_CHECKPOINTS)
-
+#%%
 """###Looking for induction heads
 We can use this to analyse whether models contain induction heads during training (by checking whether they can predict repeated sequences of random tokens), and can see something of a phase change early in training
 """
@@ -699,3 +704,5 @@ for check in [1000, 2500, 5000]:
     plps[check] = plp.detach().cpu().numpy()
 px.line(plps).show()
 
+
+# %%
